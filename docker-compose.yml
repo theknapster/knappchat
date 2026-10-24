@@ -1,0 +1,33 @@
+name: knappchat
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: knappchat
+      # from ./.env (see DEPLOYMENT.md); must match DATABASE_URL in server/.env
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: knappchat
+    ports:
+      - "127.0.0.1:5433:5432" # 5433 on the host: a native postgresql@16 already owns 5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  livekit:
+    image: livekit/livekit-server:v1.13.10
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    environment:
+      # "key: secret" from ./.env; must match LIVEKIT_API_KEY/SECRET in server/.env
+      LIVEKIT_KEYS: ${LIVEKIT_KEYS:?set LIVEKIT_KEYS in .env}
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    # host networking keeps the RTC UDP mux port (7882), TURN relay port
+    # (3478/udp), and signaling ports simple on Linux. On macOS/Windows
+    # Docker Desktop, replace with explicit `ports:` mappings for 7880/tcp,
+    # 7881/tcp, 3478/udp, and 7882/udp instead.
+    network_mode: host
+
+volumes:
+  postgres-data:

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+
+# host-specific deployment notes (domains, IPs, provider quirks)
+DEPLOYMENT.local.md

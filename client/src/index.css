@@ -1,0 +1,56 @@
+:root {
+  --text: #1f2328;
+  --text-muted: #6b7280;
+  --bg: #ffffff;
+  --bg-subtle: #f6f7f8;
+  --border: #e3e5e8;
+  --accent: #5865f2;
+  --accent-fg: #ffffff;
+  --danger: #da373c;
+  --online: #23a55a;
+  font: 15px/1.45 system-ui, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #e6e6e6;
+    --text-muted: #9aa0a6;
+    --bg: #1a1b1e;
+    --bg-subtle: #232428;
+    --border: #303236;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+input {
+  font: inherit;
+}
+
+/* online list is a right-hand sidebar; no room for it on phones */
+@media (max-width: 640px) {
+  .online-list {
+    display: none;
+  }
+}

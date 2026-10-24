@@ -1,0 +1,27 @@
+# knappchat backend. Install to /etc/systemd/system/knappchat.service.
+# Assumes the repo at /home/ubuntu/knappchat run as user ubuntu, and Node
+# from nvm; adjust User, paths and the Node version to match your host.
+[Unit]
+Description=knappchat backend
+After=network-online.target docker.service
+Wants=network-online.target
+# keep retrying at boot until Postgres (docker) is up
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/knappchat/server
+# nvm-installed Node; update this path after switching Node versions
+Environment=PATH=/home/ubuntu/.nvm/versions/node/v22.23.3/bin:/usr/bin:/bin
+Environment=NODE_ENV=production
+ExecStartPre=/home/ubuntu/.nvm/versions/node/v22.23.3/bin/npm run migrate
+ExecStart=/home/ubuntu/.nvm/versions/node/v22.23.3/bin/node dist/index.js
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

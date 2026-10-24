@@ -1,0 +1,17 @@
+# LiveKit SFU config, based on LiveKit's default self-hosting guidance for a
+# host with a public IP. See DEPLOYMENT.md for the ports to open.
+port: 7880
+rtc:
+  tcp_port: 7881
+  # Single fixed UDP mux port (kept from the WSL2 setup - harmless here and
+  # keeps the firewall rule to one port).
+  udp_port: 7882
+  # Discover the public IP via STUN and advertise it to clients.
+  use_external_ip: true
+# Embedded TURN relay (plain UDP) as a fallback for clients behind
+# restrictive NATs/firewalls.
+turn:
+  enabled: true
+  udp_port: 3478
+# API keys are not stored here: docker-compose.yml passes LIVEKIT_KEYS
+# ("key: secret") from the repo-root .env.

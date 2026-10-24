@@ -1,0 +1,38 @@
+# knappchat reverse proxy. Install to /etc/caddy/Caddyfile and replace
+# example.com with your domain; Caddy obtains TLS certificates automatically.
+
+example.com {
+	encode zstd gzip
+
+	# Same three rules as client/vite.config.ts, sent straight to the backend
+	handle_path /api/* {
+		reverse_proxy localhost:8080
+	}
+	handle /ws* {
+		reverse_proxy localhost:8080
+	}
+	handle /auth/callback* {
+		reverse_proxy localhost:8080
+	}
+
+	# Built client, published by scripts/deploy.sh
+	handle {
+		root * /srv/knappchat
+		# hashed filenames: safe to cache forever; index.html must revalidate
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@html not path /assets/*
+		header @html Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+www.example.com {
+	redir https://example.com{uri} permanent
+}
+
+# LiveKit signaling (wss); media goes direct over 7881/tcp, 7882/udp, TURN 3478/udp
+livekit.example.com {
+	reverse_proxy localhost:7880
+}
