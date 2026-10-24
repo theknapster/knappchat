@@ -1,0 +1,75 @@
+{
+  "name": "knappchat-desktop",
+  "productName": "knappchat",
+  "version": "0.1.0",
+  "description": "knappchat desktop client with global mute and push-to-talk hotkeys",
+  "author": "Kevin Knapp <kevin@knapster.net>",
+  "homepage": "https://github.com/theknapster/knappchat",
+  "license": "MIT",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node -e \"require('fs').copyFileSync('src/setup.html', 'dist/setup.html')\"",
+    "start": "npm run build && electron .",
+    "test": "npm run build && node --test \"test/*.test.cjs\"",
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:linux": "npm run build && electron-builder --linux --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never"
+  },
+  "dependencies": {
+    "uiohook-napi": "1.5.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "electron": "44.7.0",
+    "electron-builder": "26.17.0",
+    "typescript": "~6.0.2"
+  },
+  "build": {
+    "appId": "net.knapster.knappchat",
+    "productName": "knappchat",
+    "npmRebuild": false,
+    "files": [
+      "dist/**",
+      "assets/**",
+      "package.json",
+      "!node_modules/uiohook-napi/{libuiohook,src,build,binding.gyp}{,/**}",
+      "!node_modules/uiohook-napi/prebuilds/**",
+      "node_modules/uiohook-napi/prebuilds/${platform}-${arch}/**"
+    ],
+    "asarUnpack": [
+      "node_modules/uiohook-napi/**"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "assets/icon.png",
+      "category": "Network",
+      "maintainer": "Kevin Knapp <kevin@knapster.net>"
+    },
+    "deb": {
+      "depends": [
+        "libxtst6",
+        "libnss3",
+        "libgtk-3-0",
+        "libnotify4",
+        "libxss1"
+      ]
+    }
+  }
+}

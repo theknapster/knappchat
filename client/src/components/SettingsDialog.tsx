@@ -8,6 +8,8 @@ import {
   hotkeyFromEvent,
   type Hotkey,
 } from '../lib/hotkey';
+import { desktop } from '../lib/desktop';
+import DesktopHotkeys from './DesktopHotkeys';
 
 export default function SettingsDialog({
   user,
@@ -27,15 +29,16 @@ export default function SettingsDialog({
   const [nicknameStatus, setNicknameStatus] = useState<string | null>(null);
   const [nicknameError, setNicknameError] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
+  const [desktopRecording, setDesktopRecording] = useState(false);
 
   useEffect(() => {
-    if (recording) return;
+    if (recording || desktopRecording) return;
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [recording, onClose]);
+  }, [recording, desktopRecording, onClose]);
 
   async function saveNickname(e: React.FormEvent) {
     e.preventDefault();
@@ -105,44 +108,48 @@ export default function SettingsDialog({
           {nicknameError && <p style={styles.error}>{nicknameError}</p>}
         </form>
 
-        <div style={styles.section}>
-          <span style={styles.label}>Mute / unmute hotkey</span>
-          <div style={styles.row}>
-            <button
-              type="button"
-              style={{ ...styles.hotkeyButton, ...(recording ? styles.recording : {}) }}
-              onClick={() => setRecording(true)}
-              onKeyDown={recording ? recordKey : undefined}
-              onBlur={() => setRecording(false)}
-            >
-              {recording
-                ? 'Press a key combination… (Esc to cancel)'
-                : muteHotkey
-                  ? formatHotkey(muteHotkey)
-                  : 'Not set'}
-            </button>
-            <button
-              type="button"
-              style={styles.secondaryButton}
-              onClick={() => onMuteHotkeyChange(null)}
-              disabled={!muteHotkey}
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              style={styles.secondaryButton}
-              onClick={() => onMuteHotkeyChange(DEFAULT_MUTE_HOTKEY)}
-            >
-              Default
-            </button>
+        {desktop ? (
+          <DesktopHotkeys desktop={desktop} onRecordingChange={setDesktopRecording} />
+        ) : (
+          <div style={styles.section}>
+            <span style={styles.label}>Mute / unmute hotkey</span>
+            <div style={styles.row}>
+              <button
+                type="button"
+                style={{ ...styles.hotkeyButton, ...(recording ? styles.recording : {}) }}
+                onClick={() => setRecording(true)}
+                onKeyDown={recording ? recordKey : undefined}
+                onBlur={() => setRecording(false)}
+              >
+                {recording
+                  ? 'Press a key combination… (Esc to cancel)'
+                  : muteHotkey
+                    ? formatHotkey(muteHotkey)
+                    : 'Not set'}
+              </button>
+              <button
+                type="button"
+                style={styles.secondaryButton}
+                onClick={() => onMuteHotkeyChange(null)}
+                disabled={!muteHotkey}
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                style={styles.secondaryButton}
+                onClick={() => onMuteHotkeyChange(DEFAULT_MUTE_HOTKEY)}
+              >
+                Default
+              </button>
+            </div>
+            <p style={styles.help}>
+              Works while this tab is focused. Saved in this browser only.
+              {muteHotkey && !hasCommandModifier(muteHotkey) &&
+                ' Without Ctrl/Alt it is ignored while typing in a text box.'}
+            </p>
           </div>
-          <p style={styles.help}>
-            Works while this tab is focused. Saved in this browser only.
-            {muteHotkey && !hasCommandModifier(muteHotkey) &&
-              ' Without Ctrl/Alt it is ignored while typing in a text box.'}
-          </p>
-        </div>
+        )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button type="button" style={styles.secondaryButton} onClick={onClose}>

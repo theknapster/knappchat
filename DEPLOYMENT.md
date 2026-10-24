@@ -124,7 +124,8 @@ backend. Run it again after every update; re-running is safe.
 
 Open `https://example.com` in two browsers (e.g. two private windows). Sign
 in with a different email in each, then check chat, the online list,
-nicknames, and voice between them.
+nicknames, and voice between them. Check that the login email contains both
+a link and a 6-digit code.
 
 ## Troubleshooting voice
 
@@ -141,6 +142,14 @@ unusual networks, see LiveKit's self-hosting docs for `node_ip` and
 Harmless startup warnings: a "UDP receive buffer is too small" notice
 (`sysctl -w net.core.rmem_max=5000000` fixes it), and Docker bridge IPs
 showing up as extra ICE candidates.
+
+## Desktop app
+
+The desktop app needs nothing extra on the server. It loads the deployed web
+client, so redeploying with `scripts/deploy.sh` updates its UI too. Users
+enter the server address (e.g. `https://example.com`) on first launch and
+sign in with the 6-digit code from the login email. Builds and releases are
+covered in [desktop/README.md](desktop/README.md).
 
 ## Local development
 

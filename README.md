@@ -5,12 +5,14 @@ and passwordless email login. Built for a group of friends, not for scale.
 
 ## Features
 
-- **Magic-link login** - enter your email and click the link; no passwords
+- **Passwordless login** - enter your email, then click the link or type the 6-digit code
 - **Text chat** - real-time over WebSocket, history stored in Postgres
 - **Voice chat** - WebRTC through a self-hosted [LiveKit](https://livekit.io) server
 - **Online list** - see who is connected right now
 - **Nicknames** - set a display name; it updates everywhere live
-- **Mute hotkey** - configurable per browser (default Alt+M)
+- **Desktop app** (Windows, Linux) - global toggle-mute and push-to-talk hotkeys,
+  including mouse buttons, that work while the app is in the background
+- **In-browser mute hotkey** - configurable per browser (default Alt+M; tab must be focused)
 
 ## Stack
 
@@ -18,6 +20,7 @@ and passwordless email login. Built for a group of friends, not for scale.
 |---|---|
 | `server/` | Node 22, TypeScript, Fastify, `pg`, `jose` (JWT sessions), nodemailer, LiveKit server SDK |
 | `client/` | React 19, Vite, `livekit-client` |
+| `desktop/` | Electron shell around the web client, `uiohook-napi` for global hotkeys |
 | Infra | Postgres 16 and LiveKit via Docker Compose; Caddy for HTTPS |
 
 ## Quick start (local development)
@@ -36,6 +39,11 @@ Then open http://localhost:5173. For local development, set
 `APP_URL=http://localhost:5173` and `LIVEKIT_URL=ws://localhost:7880` in
 `server/.env`. Login links are sent through the SMTP server you configure.
 
+## Desktop app
+
+Download it from [Releases](https://github.com/theknapster/knappchat/releases).
+See [desktop/README.md](desktop/README.md) for usage, building and releasing.
+
 ## Deploying
 
 See [DEPLOYMENT.md](DEPLOYMENT.md). It covers DNS, firewall ports, Caddy,
@@ -45,9 +53,11 @@ systemd, and a one-command `scripts/deploy.sh`.
 
 ```
 client/            React frontend
+desktop/           Electron desktop app (global hotkeys)
 server/            Fastify backend (src/migrations holds the SQL migrations)
 deploy/            Caddyfile and systemd unit templates
 scripts/deploy.sh  build, publish and restart on the server
+.github/workflows  desktop app builds and releases
 docker-compose.yml Postgres + LiveKit
 livekit.yaml       LiveKit config (keys come from .env)
 ```

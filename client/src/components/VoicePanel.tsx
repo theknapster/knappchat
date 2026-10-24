@@ -14,6 +14,7 @@ import {
   matchesHotkey,
   type Hotkey,
 } from '../lib/hotkey';
+import { desktop } from '../lib/desktop';
 
 interface Participant {
   identity: string;
@@ -39,12 +40,24 @@ export default function VoicePanel({ muteHotkey }: { muteHotkey: Hotkey | null }
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const roomRef = useRef<Room | null>(null);
+  // serializes mic changes so a fast push-to-talk press/release can't race
+  const micQueueRef = useRef<Promise<void>>(Promise.resolve());
   const audioContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => () => void roomRef.current?.disconnect(), []);
 
+  // in the desktop app the global hotkeys take over (they also fire while
+  // the window is focused, so the in-page one would double-toggle)
   useEffect(() => {
-    if (!muteHotkey) return;
+    if (!desktop) return;
+    return desktop.onHotkey((event) => {
+      if (event === 'toggle') void toggleMute();
+      else setMic(event === 'ptt-down');
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!muteHotkey || desktop) return;
     const hotkey = muteHotkey;
     function onKeyDown(e: KeyboardEvent) {
       if (e.repeat || !roomRef.current || !matchesHotkey(e, hotkey)) return;
@@ -103,8 +116,14 @@ export default function VoicePanel({ muteHotkey }: { muteHotkey: Hotkey | null }
       });
 
       await room.connect(url, token);
+      // publish the mic up front (permission prompt, device open) so
+      // push-to-talk only has to unmute
       await room.localParticipant.setMicrophoneEnabled(true);
-      setMuted(false);
+      const pushToTalk = desktop
+        ? await desktop.getHotkeys().then((h) => h.ptt !== null, () => false)
+        : false;
+      if (pushToTalk) await room.localParticipant.setMicrophoneEnabled(false);
+      setMuted(pushToTalk);
       syncParticipants(room);
       setStatus('connected');
     } catch (err) {
@@ -120,14 +139,29 @@ export default function VoicePanel({ muteHotkey }: { muteHotkey: Hotkey | null }
     setParticipants([]);
   }
 
-  async function toggleMute() {
-    const room = roomRef.current;
-    if (!room) return;
-    // read from the room rather than `muted` state so the hotkey listener
-    // never acts on a stale value
-    const enabled = room.localParticipant.isMicrophoneEnabled;
-    await room.localParticipant.setMicrophoneEnabled(!enabled);
-    setMuted(enabled);
+  function queueMic(change: (room: Room) => Promise<void>) {
+    micQueueRef.current = micQueueRef.current.then(async () => {
+      const room = roomRef.current;
+      if (room) await change(room).catch(() => undefined);
+    });
+    return micQueueRef.current;
+  }
+
+  function setMic(enabled: boolean) {
+    void queueMic(async (room) => {
+      await room.localParticipant.setMicrophoneEnabled(enabled);
+      setMuted(!enabled);
+    });
+  }
+
+  function toggleMute() {
+    // read from the room rather than `muted` state so hotkey listeners
+    // never act on a stale value
+    return queueMic(async (room) => {
+      const enabled = room.localParticipant.isMicrophoneEnabled;
+      await room.localParticipant.setMicrophoneEnabled(!enabled);
+      setMuted(enabled);
+    });
   }
 
   return (
@@ -145,10 +179,10 @@ export default function VoicePanel({ muteHotkey }: { muteHotkey: Hotkey | null }
             <button
               style={styles.smallButton}
               onClick={toggleMute}
-              title={muteHotkey ? `Hotkey: ${formatHotkey(muteHotkey)}` : undefined}
+              title={muteHotkey && !desktop ? `Hotkey: ${formatHotkey(muteHotkey)}` : undefined}
             >
               {muted ? 'Unmute' : 'Mute'}
-              {muteHotkey && (
+              {muteHotkey && !desktop && (
                 <span style={styles.hotkeyHint}> {formatHotkey(muteHotkey)}</span>
               )}
             </button>

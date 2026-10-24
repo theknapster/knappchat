@@ -16,7 +16,9 @@ export default function App() {
 
   if (loading) return null;
 
-  if (!user) return <Login />;
+  if (!user) {
+    return <Login onLoggedIn={() => fetchMe().then((res) => setUser(res.user))} />;
+  }
 
   return <ChatRoom user={user} onUserChange={setUser} onLoggedOut={() => setUser(null)} />;
 }

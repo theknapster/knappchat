@@ -35,6 +35,13 @@ export function requestLoginLink(email: string): Promise<{ ok: true }> {
   });
 }
 
+export function verifyLoginCode(email: string, code: string): Promise<{ ok: true }> {
+  return request('/auth/verify-code', {
+    method: 'POST',
+    body: JSON.stringify({ email, code }),
+  });
+}
+
 export function logout(): Promise<{ ok: true }> {
   return request('/auth/logout', { method: 'POST' });
 }

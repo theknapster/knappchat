@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'"
+    />
+    <title>knappchat</title>
+    <style>
+      :root {
+        --text: #1f2328;
+        --text-muted: #6b7280;
+        --bg: #ffffff;
+        --bg-subtle: #f6f7f8;
+        --border: #e3e5e8;
+        --accent: #5865f2;
+        --danger: #da373c;
+        font: 15px/1.45 system-ui, 'Segoe UI', Roboto, sans-serif;
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --text: #e6e6e6;
+          --text-muted: #9aa0a6;
+          --bg: #1a1b1e;
+          --bg-subtle: #232428;
+          --border: #303236;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: var(--bg);
+        color: var(--text);
+      }
+      form {
+        width: 100%;
+        max-width: 380px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 24px;
+        background: var(--bg-subtle);
+      }
+      h1 { margin: 0 0 8px; font-size: 22px; }
+      p { color: var(--text-muted); margin: 0 0 16px; }
+      input, button { font: inherit; width: 100%; padding: 10px 12px; border-radius: 6px; }
+      input {
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--text);
+        margin-bottom: 12px;
+      }
+      button { border: none; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; }
+      .error { color: var(--danger); }
+    </style>
+  </head>
+  <body>
+    <form id="form">
+      <h1>Connect to knappchat</h1>
+      <p>Enter the address of your knappchat server.</p>
+      <input id="url" placeholder="https://chat.example.com" autofocus required />
+      <p id="error" class="error" hidden></p>
+      <button type="submit">Connect</button>
+    </form>
+    <script>
+      const input = document.getElementById('url');
+      const error = document.getElementById('error');
+      const params = new URLSearchParams(location.search);
+      function showError(message) {
+        error.textContent = message;
+        error.hidden = false;
+      }
+      if (params.get('error')) {
+        showError(`Couldn't reach ${params.get('url') || 'the server'} (${params.get('error')}).`);
+      }
+      window.knappchat.getServerUrl().then((url) => {
+        if (url) input.value = url;
+      });
+      document.getElementById('form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        error.hidden = true;
+        try {
+          await window.knappchat.setServerUrl(input.value);
+        } catch (err) {
+          // ipc errors arrive as "Error invoking remote method '…': Error: <message>"
+          showError(String(err.message || err).replace(/^.*Error: /, ''));
+        }
+      });
+    </script>
+  </body>
+</html>
