@@ -1,6 +1,19 @@
 import { useEffect, useRef } from 'react';
 import type { ChatMessage } from '../lib/api';
 
+// "Nov 5, 14:03"; the year is added for messages from earlier years
+function formatTimestamp(iso: string): string {
+  const date = new Date(iso);
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return date.toLocaleString([], {
+    year: sameYear ? undefined : 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 export default function MessageList({ messages }: { messages: ChatMessage[] }) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -15,12 +28,13 @@ export default function MessageList({ messages }: { messages: ChatMessage[] }) {
           <span style={styles.author} title={m.author_name}>
             {m.author_name}
           </span>
-          <span style={styles.time}>
-            {new Date(m.created_at).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </span>
+          <time
+            style={styles.time}
+            dateTime={m.created_at}
+            title={new Date(m.created_at).toLocaleString()}
+          >
+            {formatTimestamp(m.created_at)}
+          </time>
           <div style={styles.body}>{m.body}</div>
         </div>
       ))}

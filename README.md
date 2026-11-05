@@ -8,6 +8,8 @@ and passwordless email login. Built for a group of friends, not for scale.
 - **Passwordless login** - enter your email, then click the link or type the 6-digit code
 - **Text chat** - real-time over WebSocket, history stored in Postgres
 - **Voice chat** - WebRTC through a self-hosted [LiveKit](https://livekit.io) server
+- **Voice sounds** - short tones when people join or leave and when you mute or
+  unmute; can be turned off in Settings
 - **Online list** - see who is connected right now
 - **Nicknames** - set a display name; it updates everywhere live
 - **Desktop app** (Windows, Linux) - global toggle-mute and push-to-talk hotkeys,

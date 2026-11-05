@@ -15,6 +15,7 @@ import {
   type Hotkey,
 } from '../lib/hotkey';
 import { desktop } from '../lib/desktop';
+import { playSound, unlockSounds } from '../lib/sounds';
 
 interface Participant {
   identity: string;
@@ -23,6 +24,10 @@ interface Participant {
 }
 
 type Status = 'idle' | 'connecting' | 'connected';
+
+// a participant who drops and rejoins within this window (a brief network
+// blip) plays no leave/join sounds
+const LEAVE_SOUND_DELAY_MS = 1500;
 
 function isEditable(target: EventTarget | null): boolean {
   return (
@@ -43,6 +48,7 @@ export default function VoicePanel({ muteHotkey }: { muteHotkey: Hotkey | null }
   // serializes mic changes so a fast push-to-talk press/release can't race
   const micQueueRef = useRef<Promise<void>>(Promise.resolve());
   const audioContainerRef = useRef<HTMLDivElement>(null);
+  const pendingLeavesRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   useEffect(() => () => void roomRef.current?.disconnect(), []);
 
@@ -88,6 +94,8 @@ export default function VoicePanel({ muteHotkey }: { muteHotkey: Hotkey | null }
   }
 
   async function join() {
+    // inside the click handler, so the browser lets sounds play from now on
+    unlockSounds();
     setError(null);
     setStatus('connecting');
     try {
@@ -95,8 +103,27 @@ export default function VoicePanel({ muteHotkey }: { muteHotkey: Hotkey | null }
       const room = new Room();
       roomRef.current = room;
 
-      room.on(RoomEvent.ParticipantConnected, () => syncParticipants(room));
-      room.on(RoomEvent.ParticipantDisconnected, () => syncParticipants(room));
+      const pendingLeaves = pendingLeavesRef.current;
+      room.on(RoomEvent.ParticipantConnected, (p: RemoteParticipant) => {
+        syncParticipants(room);
+        const pending = pendingLeaves.get(p.identity);
+        if (pending) {
+          clearTimeout(pending);
+          pendingLeaves.delete(p.identity);
+        } else {
+          playSound('join');
+        }
+      });
+      room.on(RoomEvent.ParticipantDisconnected, (p: RemoteParticipant) => {
+        syncParticipants(room);
+        pendingLeaves.set(
+          p.identity,
+          setTimeout(() => {
+            pendingLeaves.delete(p.identity);
+            playSound('leave');
+          }, LEAVE_SOUND_DELAY_MS)
+        );
+      });
       room.on(
         RoomEvent.TrackSubscribed,
         (track: RemoteTrack, _pub: RemoteTrackPublication) => {
@@ -110,6 +137,9 @@ export default function VoicePanel({ muteHotkey }: { muteHotkey: Hotkey | null }
         track.detach().forEach((el) => el.remove());
       });
       room.on(RoomEvent.Disconnected, () => {
+        pendingLeaves.forEach(clearTimeout);
+        pendingLeaves.clear();
+        playSound('leave');
         setStatus('idle');
         setParticipants([]);
         roomRef.current = null;
@@ -126,6 +156,7 @@ export default function VoicePanel({ muteHotkey }: { muteHotkey: Hotkey | null }
       setMuted(pushToTalk);
       syncParticipants(room);
       setStatus('connected');
+      playSound('join');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'failed to join voice');
       setStatus('idle');
@@ -149,8 +180,10 @@ export default function VoicePanel({ muteHotkey }: { muteHotkey: Hotkey | null }
 
   function setMic(enabled: boolean) {
     void queueMic(async (room) => {
+      if (room.localParticipant.isMicrophoneEnabled === enabled) return;
       await room.localParticipant.setMicrophoneEnabled(enabled);
       setMuted(!enabled);
+      playSound(enabled ? 'unmute' : 'mute', { pushToTalk: true });
     });
   }
 
@@ -161,6 +194,7 @@ export default function VoicePanel({ muteHotkey }: { muteHotkey: Hotkey | null }
       const enabled = room.localParticipant.isMicrophoneEnabled;
       await room.localParticipant.setMicrophoneEnabled(!enabled);
       setMuted(enabled);
+      playSound(enabled ? 'mute' : 'unmute');
     });
   }
 

@@ -9,6 +9,7 @@ import {
   type Hotkey,
 } from '../lib/hotkey';
 import { desktop } from '../lib/desktop';
+import { getSoundSettings, saveSoundSettings, type SoundSettings } from '../lib/sounds';
 import DesktopHotkeys from './DesktopHotkeys';
 
 export default function SettingsDialog({
@@ -30,6 +31,13 @@ export default function SettingsDialog({
   const [nicknameError, setNicknameError] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const [desktopRecording, setDesktopRecording] = useState(false);
+  const [sounds, setSounds] = useState<SoundSettings>(getSoundSettings);
+
+  function updateSounds(change: Partial<SoundSettings>) {
+    const next = { ...sounds, ...change };
+    saveSoundSettings(next);
+    setSounds(next);
+  }
 
   useEffect(() => {
     if (recording || desktopRecording) return;
@@ -151,6 +159,29 @@ export default function SettingsDialog({
           </div>
         )}
 
+        <div style={styles.section}>
+          <span style={styles.label}>Voice sounds</span>
+          <label style={styles.checkbox}>
+            <input
+              type="checkbox"
+              checked={sounds.enabled}
+              onChange={(e) => updateSounds({ enabled: e.target.checked })}
+            />
+            Play sounds when people join or leave, and when you mute or unmute
+          </label>
+          {desktop && (
+            <label style={styles.checkbox}>
+              <input
+                type="checkbox"
+                checked={sounds.pushToTalk}
+                disabled={!sounds.enabled}
+                onChange={(e) => updateSounds({ pushToTalk: e.target.checked })}
+              />
+              Also play them for push to talk
+            </label>
+          )}
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button type="button" style={styles.secondaryButton} onClick={onClose}>
             Done
@@ -224,5 +255,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: 'ui-monospace, monospace',
     textAlign: 'left',
   },
+  checkbox: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 },
   recording: { borderColor: 'var(--accent)', outline: '2px solid var(--accent)' },
 };
