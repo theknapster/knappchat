@@ -22,8 +22,10 @@ when this `desktop/` code changes.
 
 With push-to-talk set, you join voice muted and talk while holding the key.
 
-The tray icon has Show, Reload, Change server, and "Keep running in tray when
-closed" (on by default on Windows). F12 opens DevTools.
+Closing the window quits the app. To keep it running in the background
+instead, tick "Keep running in tray when closed" in the tray icon's menu. On
+Windows 11 the icon may be hidden behind the ^ arrow in the taskbar. The tray
+menu also has Show, Reload, Change server and Quit. F12 opens DevTools.
 
 ### Notes
 

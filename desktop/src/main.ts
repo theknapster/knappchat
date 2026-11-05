@@ -27,6 +27,7 @@ const settings = loadSettings();
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let quitting = false;
+let trayNoticeShown = false;
 let hookError: string | null = null;
 
 const keyNames = new Map<number, string>(
@@ -193,9 +194,18 @@ function createWindow() {
   });
 
   win.on("close", (e) => {
-    if (settings.closeToTray && tray && !quitting) {
+    if (settings.minimizeToTray && tray && !quitting) {
       e.preventDefault();
       win?.hide();
+      // Windows 11 hides new tray icons behind the ^ overflow, so say where we went
+      if (process.platform === "win32" && !trayNoticeShown) {
+        trayNoticeShown = true;
+        tray.displayBalloon({
+          title: "knappchat is still running",
+          content: "It's in the system tray. Right-click the icon and choose Quit to exit.",
+          iconType: "info",
+        });
+      }
     }
   });
   win.on("closed", () => {
@@ -225,9 +235,9 @@ function createTray() {
       {
         label: "Keep running in tray when closed",
         type: "checkbox",
-        checked: settings.closeToTray,
+        checked: settings.minimizeToTray,
         click: (item) => {
-          settings.closeToTray = item.checked;
+          settings.minimizeToTray = item.checked;
           saveSettings(settings);
         },
       },

@@ -6,15 +6,15 @@ import type { Binding, Bindings } from "./hotkeys";
 export interface Settings {
   serverUrl: string | null;
   hotkeys: Bindings;
-  // Windows users expect voice apps to keep running in the tray; many Linux
-  // desktops have no tray, where hiding the window would strand the app
-  closeToTray: boolean;
+  // off by default: closing the window quits. (0.1.0 used a "closeToTray"
+  // key that defaulted to on for Windows; it's ignored so X quits again.)
+  minimizeToTray: boolean;
 }
 
 const defaults = (): Settings => ({
   serverUrl: null,
   hotkeys: { toggle: null, ptt: null },
-  closeToTray: process.platform === "win32",
+  minimizeToTray: false,
 });
 
 function file() {
@@ -37,7 +37,7 @@ export function loadSettings(): Settings {
   try {
     const raw = JSON.parse(readFileSync(file(), "utf8"));
     if (typeof raw.serverUrl === "string") s.serverUrl = raw.serverUrl;
-    if (typeof raw.closeToTray === "boolean") s.closeToTray = raw.closeToTray;
+    if (typeof raw.minimizeToTray === "boolean") s.minimizeToTray = raw.minimizeToTray;
     if (isBinding(raw.hotkeys?.toggle)) s.hotkeys.toggle = raw.hotkeys.toggle;
     if (isBinding(raw.hotkeys?.ptt)) s.hotkeys.ptt = raw.hotkeys.ptt;
   } catch {
