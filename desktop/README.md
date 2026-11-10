@@ -17,8 +17,9 @@ when this `desktop/` code changes.
 3. Sign in. The login email has a link and a 6-digit code; enter the code in
    the app. The link would sign in your browser instead.
 4. Open **Settings → Global hotkeys** and set **Toggle mute** and/or **Push to
-   talk**. Click a field, then press a key combination or a mouse side/middle
-   button. Esc cancels.
+   talk**. Click a field, then press a key combination, a single modifier key
+   (tap Alt, Ctrl, Shift or Win on its own), or a mouse side/middle button. Esc
+   cancels.
 
 With push-to-talk set, you join voice muted and talk while holding the key.
 
@@ -32,6 +33,10 @@ menu also has Show, Reload, Change server and Quit. F12 opens DevTools.
 - Hotkeys are observed, not captured: the key still reaches the focused app,
   as with Discord's keybinds. Pick keys you don't otherwise use, like F9 or a
   mouse side button.
+- A single modifier key as push-to-talk (e.g. Alt) also fires while you use
+  it in shortcuts like Alt+Tab. Left and right Alt are separate keys, so Right
+  Alt is a good choice if you use the left one for shortcuts. In some Windows
+  apps, tapping Alt alone also highlights the menu bar.
 - **Linux:** global hotkeys need an X11 session. Wayland doesn't let apps see
   other apps' input, so under Wayland they only work while an X11/XWayland
   window has focus. The `.deb` depends on `libxtst6`.

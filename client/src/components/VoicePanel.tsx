@@ -3,6 +3,7 @@ import {
   Room,
   RoomEvent,
   Track,
+  type LocalAudioTrack,
   type RemoteParticipant,
   type RemoteTrack,
   type RemoteTrackPublication,
@@ -16,6 +17,12 @@ import {
 } from '../lib/hotkey';
 import { desktop } from '../lib/desktop';
 import { playSound, unlockSounds } from '../lib/sounds';
+import {
+  NOISE_SAMPLE_RATE,
+  RnnoiseProcessor,
+  loadNoiseSuppression,
+  onNoiseSuppressionChange,
+} from '../lib/noise';
 
 interface Participant {
   identity: string;
@@ -49,8 +56,19 @@ export default function VoicePanel({ muteHotkey }: { muteHotkey: Hotkey | null }
   const micQueueRef = useRef<Promise<void>>(Promise.resolve());
   const audioContainerRef = useRef<HTMLDivElement>(null);
   const pendingLeavesRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  // runs the noise suppression worklet; created on Join (a user gesture)
+  const noiseContextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => () => void roomRef.current?.disconnect(), []);
+
+  // apply the Settings toggle to a call in progress
+  useEffect(
+    () =>
+      onNoiseSuppressionChange((enabled) => {
+        void queueMic((room) => applyNoiseSuppression(room, enabled));
+      }),
+    []
+  );
 
   // in the desktop app the global hotkeys take over (they also fire while
   // the window is focused, so the in-page one would double-toggle)
@@ -96,6 +114,7 @@ export default function VoicePanel({ muteHotkey }: { muteHotkey: Hotkey | null }
   async function join() {
     // inside the click handler, so the browser lets sounds play from now on
     unlockSounds();
+    noiseContextRef.current ??= new AudioContext({ sampleRate: NOISE_SAMPLE_RATE });
     setError(null);
     setStatus('connecting');
     try {
@@ -140,6 +159,8 @@ export default function VoicePanel({ muteHotkey }: { muteHotkey: Hotkey | null }
         pendingLeaves.forEach(clearTimeout);
         pendingLeaves.clear();
         playSound('leave');
+        void noiseContextRef.current?.close();
+        noiseContextRef.current = null;
         setStatus('idle');
         setParticipants([]);
         roomRef.current = null;
@@ -149,6 +170,7 @@ export default function VoicePanel({ muteHotkey }: { muteHotkey: Hotkey | null }
       // publish the mic up front (permission prompt, device open) so
       // push-to-talk only has to unmute
       await room.localParticipant.setMicrophoneEnabled(true);
+      await applyNoiseSuppression(room, loadNoiseSuppression());
       const pushToTalk = desktop
         ? await desktop.getHotkeys().then((h) => h.ptt !== null, () => false)
         : false;
@@ -159,7 +181,27 @@ export default function VoicePanel({ muteHotkey }: { muteHotkey: Hotkey | null }
       playSound('join');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'failed to join voice');
+      void noiseContextRef.current?.close();
+      noiseContextRef.current = null;
       setStatus('idle');
+    }
+  }
+
+  async function applyNoiseSuppression(room: Room, enabled: boolean) {
+    const track = room.localParticipant.getTrackPublication(Track.Source.Microphone)
+      ?.audioTrack as LocalAudioTrack | undefined;
+    if (!track || enabled === Boolean(track.getProcessor())) return;
+    try {
+      if (enabled) {
+        noiseContextRef.current ??= new AudioContext({ sampleRate: NOISE_SAMPLE_RATE });
+        track.setAudioContext(noiseContextRef.current);
+        await track.setProcessor(new RnnoiseProcessor());
+      } else {
+        await track.stopProcessor();
+      }
+    } catch (err) {
+      // the browser's built-in suppression still applies
+      console.warn('noise suppression unavailable:', err);
     }
   }
 

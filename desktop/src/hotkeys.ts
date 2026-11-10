@@ -35,6 +35,10 @@ export class HotkeyMatcher extends EventEmitter {
   private bindings: Bindings = { toggle: null, ptt: null };
   private held = new Set<HotkeyKind>();
   private recorder: ((binding: Binding | null) => void) | null = null;
+  // while recording: modifiers held down, and the one that would be recorded
+  // on its own if it's released before any other key goes down
+  private recordHeld = new Set<number>();
+  private loneModifier: number | null = null;
 
   constructor(
     private keyNames: Map<number, string>,
@@ -51,8 +55,9 @@ export class HotkeyMatcher extends EventEmitter {
     this.bindings = bindings;
   }
 
-  // Resolves with the next non-modifier key (with held modifiers) or extra
-  // mouse button; null on Escape, cancel() or timeout.
+  // Resolves with the next non-modifier key (with held modifiers), a modifier
+  // pressed and released on its own (e.g. Alt), or an extra mouse button;
+  // null on Escape, cancel() or timeout.
   record(timeoutMs = 15_000): Promise<Binding | null> {
     this.cancelRecording();
     return new Promise((resolve) => {
@@ -71,13 +76,19 @@ export class HotkeyMatcher extends EventEmitter {
   private finishRecording(binding: Binding | null) {
     const recorder = this.recorder;
     this.recorder = null;
+    this.recordHeld.clear();
+    this.loneModifier = null;
     recorder?.(binding);
   }
 
   onKeyDown(e: KeyEventLike) {
     if (this.recorder) {
       if (e.keycode === this.escapeCode) this.finishRecording(null);
-      else if (!this.modifierCodes.has(e.keycode)) {
+      else if (this.modifierCodes.has(e.keycode)) {
+        if (this.recordHeld.has(e.keycode)) return; // auto-repeat
+        this.loneModifier = this.recordHeld.size === 0 ? e.keycode : null;
+        this.recordHeld.add(e.keycode);
+      } else {
         this.finishRecording({
           type: "key",
           keycode: e.keycode,
@@ -92,14 +103,23 @@ export class HotkeyMatcher extends EventEmitter {
     for (const kind of ["toggle", "ptt"] as const) {
       const b = this.bindings[kind];
       if (b?.type !== "key" || b.keycode !== e.keycode) continue;
-      if (b.ctrl !== e.ctrlKey || b.alt !== e.altKey || b.shift !== e.shiftKey || b.meta !== e.metaKey) {
-        continue;
-      }
-      this.press(kind);
+      // a lone modifier binding fires whatever else is held
+      const exact =
+        b.ctrl === e.ctrlKey && b.alt === e.altKey && b.shift === e.shiftKey && b.meta === e.metaKey;
+      if (exact || this.modifierCodes.has(b.keycode)) this.press(kind);
     }
   }
 
   onKeyUp(e: KeyEventLike) {
+    if (this.recorder) {
+      this.recordHeld.delete(e.keycode);
+      if (e.keycode === this.loneModifier) {
+        this.finishRecording({
+          type: "key", keycode: e.keycode, ctrl: false, alt: false, shift: false, meta: false,
+        });
+      }
+      return;
+    }
     // release on the main key alone: letting go of a modifier first still
     // counts as holding, and the key coming up always ends the press
     for (const kind of ["toggle", "ptt"] as const) {
@@ -149,7 +169,13 @@ export class HotkeyMatcher extends EventEmitter {
     if (binding.alt) parts.push("Alt");
     if (binding.shift) parts.push("Shift");
     if (binding.meta) parts.push(process.platform === "win32" ? "Win" : "Super");
-    parts.push(this.keyNames.get(binding.keycode) ?? `Key ${binding.keycode}`);
+    const name = this.keyNames.get(binding.keycode) ?? `Key ${binding.keycode}`;
+    // uiohook names: "AltRight" -> "Right Alt", "Meta" -> "Win"/"Super"
+    parts.push(
+      name
+        .replace(/^Meta/, process.platform === "win32" ? "Win" : "Super")
+        .replace(/^(\w+)Right$/, "Right $1")
+    );
     return parts.join("+");
   }
 }

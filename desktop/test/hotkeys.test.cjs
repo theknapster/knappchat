@@ -4,7 +4,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { HotkeyMatcher, sameBinding } = require("../dist/hotkeys.js");
 
-const CTRL = 29, ESC = 1, M = 50, F9 = 67, SPACE = 57;
+const CTRL = 29, ALT = 56, ALT_RIGHT = 3640, ESC = 1, M = 50, F9 = 67, SPACE = 57;
 const ctrlM = { type: "key", keycode: M, ctrl: true, alt: false, shift: false, meta: false };
 const f9 = { type: "key", keycode: F9, ctrl: false, alt: false, shift: false, meta: false };
 const key = (keycode, mods = {}) => ({
@@ -12,7 +12,11 @@ const key = (keycode, mods = {}) => ({
 });
 
 function setup(bindings) {
-  const m = new HotkeyMatcher(new Map([[M, "M"], [F9, "F9"]]), new Set([CTRL]), ESC);
+  const m = new HotkeyMatcher(
+    new Map([[M, "M"], [F9, "F9"], [ALT, "Alt"], [ALT_RIGHT, "AltRight"]]),
+    new Set([CTRL, ALT, ALT_RIGHT]),
+    ESC
+  );
   const events = [];
   m.on("hotkey", (e) => events.push(e));
   m.setBindings(bindings);
@@ -60,9 +64,10 @@ test("recording captures key combos and extra mouse buttons", async () => {
   const { m, take } = setup({ toggle: f9, ptt: null });
 
   let p = m.record();
-  m.onKeyDown(key(CTRL, { ctrlKey: true })); // bare modifier is skipped
+  m.onKeyDown(key(CTRL, { ctrlKey: true })); // modifier waits for the next key
   m.onKeyDown(key(SPACE, { ctrlKey: true }));
   assert.deepEqual(await p, { ...ctrlM, keycode: SPACE });
+  m.onKeyUp(key(CTRL)); // releasing it afterwards records nothing new
 
   p = m.record();
   m.onMouseDown({ button: 1 });
@@ -94,4 +99,41 @@ test("labels and binding comparison", () => {
   assert.ok(sameBinding(ctrlM, { ...ctrlM }));
   assert.ok(!sameBinding(ctrlM, f9));
   assert.ok(!sameBinding(null, null));
+});
+
+const alt = { type: "key", keycode: ALT, ctrl: false, alt: false, shift: false, meta: false };
+
+test("a modifier pressed and released alone records as a hotkey", async () => {
+  const { m } = setup({ toggle: null, ptt: null });
+  let p = m.record();
+  m.onKeyDown(key(ALT, { altKey: true }));
+  m.onKeyDown(key(ALT, { altKey: true })); // auto-repeat
+  m.onKeyUp(key(ALT));
+  assert.deepEqual(await p, alt);
+
+  // two modifiers together aren't a lone modifier; keep waiting
+  p = m.record();
+  m.onKeyDown(key(CTRL, { ctrlKey: true }));
+  m.onKeyDown(key(ALT, { ctrlKey: true, altKey: true }));
+  m.onKeyUp(key(ALT, { ctrlKey: true }));
+  m.onKeyUp(key(CTRL));
+  m.onKeyDown(key(ALT_RIGHT, { altKey: true }));
+  m.onKeyUp(key(ALT_RIGHT));
+  assert.deepEqual(await p, { ...alt, keycode: ALT_RIGHT });
+});
+
+test("a lone modifier works as push-to-talk, with or without other keys", () => {
+  const { m, take } = setup({ toggle: null, ptt: alt });
+  m.onKeyDown(key(ALT, { altKey: true }));
+  m.onKeyDown(key(ALT, { altKey: true }));
+  m.onKeyUp(key(ALT));
+  assert.deepEqual(take(), ["ptt-down", "ptt-up"]);
+  m.onKeyDown(key(CTRL, { ctrlKey: true }));
+  m.onKeyDown(key(ALT, { ctrlKey: true, altKey: true }));
+  m.onKeyUp(key(ALT, { ctrlKey: true }));
+  assert.deepEqual(take(), ["ptt-down", "ptt-up"]);
+  m.onKeyDown(key(ALT_RIGHT, { altKey: true })); // left and right are separate keys
+  assert.deepEqual(take(), []);
+  assert.equal(m.label(alt), "Alt");
+  assert.equal(m.label({ ...alt, keycode: ALT_RIGHT }), "Right Alt");
 });

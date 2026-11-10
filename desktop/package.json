@@ -1,7 +1,7 @@
 {
   "name": "knappchat-desktop",
   "productName": "knappchat",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "knappchat desktop client with global mute and push-to-talk hotkeys",
   "author": "Kevin Knapp <kevin@knapster.net>",
   "homepage": "https://github.com/theknapster/knappchat",

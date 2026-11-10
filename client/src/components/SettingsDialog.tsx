@@ -10,6 +10,7 @@ import {
 } from '../lib/hotkey';
 import { desktop } from '../lib/desktop';
 import { getSoundSettings, saveSoundSettings, type SoundSettings } from '../lib/sounds';
+import { loadNoiseSuppression, saveNoiseSuppression } from '../lib/noise';
 import DesktopHotkeys from './DesktopHotkeys';
 
 export default function SettingsDialog({
@@ -32,6 +33,7 @@ export default function SettingsDialog({
   const [recording, setRecording] = useState(false);
   const [desktopRecording, setDesktopRecording] = useState(false);
   const [sounds, setSounds] = useState<SoundSettings>(getSoundSettings);
+  const [noiseSuppression, setNoiseSuppression] = useState(loadNoiseSuppression);
 
   function updateSounds(change: Partial<SoundSettings>) {
     const next = { ...sounds, ...change };
@@ -158,6 +160,25 @@ export default function SettingsDialog({
             </p>
           </div>
         )}
+
+        <div style={styles.section}>
+          <span style={styles.label}>Microphone</span>
+          <label style={styles.checkbox}>
+            <input
+              type="checkbox"
+              checked={noiseSuppression}
+              onChange={(e) => {
+                saveNoiseSuppression(e.target.checked);
+                setNoiseSuppression(e.target.checked);
+              }}
+            />
+            Strong noise suppression
+          </label>
+          <p style={styles.help}>
+            Filters out steady background noise like fans, hiss and hum. Turn it off if your
+            voice sounds choppy or robotic. Saved in this browser only.
+          </p>
+        </div>
 
         <div style={styles.section}>
           <span style={styles.label}>Voice sounds</span>

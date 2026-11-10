@@ -10,6 +10,8 @@ and passwordless email login. Built for a group of friends, not for scale.
 - **Voice chat** - WebRTC through a self-hosted [LiveKit](https://livekit.io) server
 - **Voice sounds** - short tones when people join or leave and when you mute or
   unmute; can be turned off in Settings
+- **Noise suppression** - RNNoise filters steady background noise (fans, hiss,
+  hum) from your mic, on top of the browser's own filter; toggle in Settings
 - **Online list** - see who is connected right now
 - **Nicknames** - set a display name; it updates everywhere live
 - **Desktop app** (Windows, Linux) - global toggle-mute and push-to-talk hotkeys,
